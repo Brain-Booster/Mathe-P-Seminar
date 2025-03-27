@@ -1,0 +1,110 @@
+[
+  {
+    "id": 1,
+    "title": "3D Stuhl-Modellierung",
+    "description": "Ein mathematischer Stuhl, modelliert in Blender.",
+    "longDescription": "Dieses Projekt zeigt die Modellierung eines mathematischen Stuhls in Blender mit Fokus auf geometrische Präzision und ästhetisches Design. Der Stuhl wurde mit Subdivision Surface-Techniken erstellt, um eine glatte und realistische Darstellung zu erreichen.",
+    "category": "3D-Design",
+    "technologies": [
+      "Blender",
+      "3D-Modellierung",
+      "Subdivision Surface"
+    ],
+    "image": "/project1.jpg",
+    "modelPath": "/models/1742926866814-untitled.glb",
+    "completed": true,
+    "team": [
+      "Jano Offermann"
+    ],
+    "timeline": "Januar 2023 - März 2023",
+    "github": "https://github.com/example/blender-chair-model",
+    "layoutSections": [
+      {
+        "id": "header",
+        "type": "header",
+        "title": "Header",
+        "active": true
+      },
+      {
+        "id": "description",
+        "type": "text",
+        "title": "Beschreibung",
+        "active": true
+      },
+      {
+        "id": "technologies",
+        "type": "tags",
+        "title": "Technologien",
+        "active": true
+      },
+      {
+        "id": "section-1742926906274",
+        "type": "3d-model",
+        "title": "3D-Modell",
+        "content": "/models/1742926898044-untitled.glb",
+        "description": "",
+        "active": true
+      },
+      {
+        "id": "model",
+        "type": "3d-model",
+        "title": "3D-Modell",
+        "active": true
+      },
+      {
+        "id": "details",
+        "type": "details",
+        "title": "Details",
+        "active": true
+      },
+      {
+        "id": "section-1742929780744",
+        "title": "a",
+        "type": "pdf",
+        "content": "/uploads/1742929772772-dummy.pdf",
+        "description": "",
+        "active": true
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "title": "Rosenzwerg",
+    "description": "Rosen im Weltall",
+    "longDescription": "",
+    "category": "Datenanalyse",
+    "technologies": [],
+    "image": "",
+    "modelPath": "",
+    "completed": false,
+    "team": [],
+    "timeline": "",
+    "github": "",
+    "layoutSections": [
+      {
+        "id": "header",
+        "type": "header",
+        "title": "Header",
+        "active": true
+      },
+      {
+        "id": "details",
+        "type": "details",
+        "title": "Details",
+        "active": true
+      },
+      {
+        "id": "technologies",
+        "type": "tags",
+        "title": "Technologien",
+        "active": true
+      },
+      {
+        "id": "description",
+        "type": "text",
+        "title": "Beschreibung",
+        "active": true
+      }
+    ]
+  }
+]

@@ -1,0 +1,19 @@
+{
+  "name": "school-project",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000 -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "server": "node scripts/server.js",
+    "simple-server": "node scripts/simple-server.js"
+  },
+  "dependencies": {
+    "@google/model-viewer": "^4.0.0",
+    "next": "^14.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
