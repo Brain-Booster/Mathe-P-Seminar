@@ -112,7 +112,7 @@ export default function ModelsAdmin() {
       <main className={styles.main}>
         <div style={{ width: '100%', marginBottom: '2rem' }}>
           <Link 
-            href="/admin"
+            href="/contact"
             style={{ 
               display: 'inline-flex', 
               alignItems: 'center', 

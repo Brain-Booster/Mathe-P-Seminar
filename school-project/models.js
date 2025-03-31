@@ -208,4 +208,130 @@ export const mockModels = [
     dateUploaded: '2023-09-10',
     fileType: 'glb'
   }
-]; 
+];
+
+// ====== TEAM MEMBERS MANAGEMENT ======
+
+// Default mock data for team members
+const defaultTeamMembers = [
+  {
+    id: '1',
+    name: 'Max',
+    nachname: 'Mustermann',
+    projekt: '3D-Modellierung',
+    projektId: '1',
+    profileImage: '/team/default-avatar.png',
+    specializations: ['Mathematik', 'Entwicklung']
+  },
+  {
+    id: '2',
+    name: 'Anna',
+    nachname: 'Beispiel',
+    projekt: 'Interaktive Webseite',
+    projektId: '2',
+    profileImage: '/team/default-avatar.png',
+    specializations: ['Web-Design', 'UI/UX']
+  },
+  {
+    id: '3',
+    name: 'Lisa',
+    nachname: 'Musterfrau',
+    projekt: 'KI-gesteuerter Roboter',
+    projektId: '3',
+    profileImage: '/team/default-avatar.png',
+    specializations: ['Künstliche Intelligenz', 'Datenanalyse']
+  }
+];
+
+// Cache for server team members
+let teamMembersCache = null;
+let lastTeamFetchTime = 0;
+const TEAM_CACHE_EXPIRATION = 10000; // 10 seconds in milliseconds
+
+// Export initial team members - will be updated after fetching from server
+export let mockTeamMembers = defaultTeamMembers;
+
+// Fetch team members from the server
+const fetchTeamMembers = async () => {
+  try {
+    const response = await fetch('/api/team');
+    if (!response.ok) {
+      throw new Error('Failed to fetch team members');
+    }
+    const data = await response.json();
+    teamMembersCache = data;
+    lastTeamFetchTime = Date.now();
+    mockTeamMembers = data; // Update the exported mockTeamMembers variable
+    return data;
+  } catch (error) {
+    console.error('Error fetching team members:', error);
+    return teamMembersCache || defaultTeamMembers;
+  }
+};
+
+// Initialize client-side team members after mount
+if (typeof window !== 'undefined') {
+  // Use an IIFE to avoid top-level code execution during SSR
+  (function initClientSideTeamMembers() {
+    fetchTeamMembers().catch(console.error);
+  })();
+}
+
+// Function to get team members from the server - used by all team member listing pages
+export const getClientTeamMembers = async () => {
+  if (typeof window !== 'undefined') {
+    // If the cache is fresh, return it
+    if (teamMembersCache && Date.now() - lastTeamFetchTime < TEAM_CACHE_EXPIRATION) {
+      return teamMembersCache;
+    }
+    
+    // Otherwise fetch fresh data
+    return await fetchTeamMembers();
+  }
+  return defaultTeamMembers;
+};
+
+// Synchronous version that returns immediate data (for use in components)
+export const getClientTeamMembersSync = () => {
+  if (typeof window !== 'undefined') {
+    // If we have cached data, use it
+    if (teamMembersCache) {
+      return teamMembersCache;
+    }
+    // Otherwise use defaults and trigger an async fetch
+    fetchTeamMembers().catch(console.error);
+    return defaultTeamMembers;
+  }
+  return defaultTeamMembers;
+};
+
+// Function to update team members and save to the server
+export const updateTeamMembers = async (teamMembers) => {
+  if (typeof window !== 'undefined') {
+    try {
+      // Update the cache immediately for responsive UI
+      teamMembersCache = teamMembers;
+      mockTeamMembers = teamMembers;
+      
+      // Then send to the server
+      const response = await fetch('/api/team', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(teamMembers),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update team members on server');
+      }
+      
+      console.log('Team members updated successfully on server:', teamMembers.length, 'members saved');
+      return teamMembers;
+    } catch (error) {
+      console.error('Error updating team members on server:', error);
+      return teamMembers;
+    }
+  }
+  return teamMembers;
+}; 

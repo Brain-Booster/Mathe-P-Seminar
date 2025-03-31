@@ -117,10 +117,55 @@ export default function ProjectDetails({ projectId }) {
   const [enableModelViewer, setEnableModelViewer] = useState(false);
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
+  
+  // Function to detect mobile or tablet
+  useEffect(() => {
+    const checkDevice = () => {
+      // Function to check if device is iPad (handles new iOS versions)
+      const isIPadOS = () => {
+        return (
+          // iPad on iOS 13+ reports as Macintosh
+          navigator.platform === 'MacIntel' && 
+          navigator.maxTouchPoints > 1 &&
+          'ontouchend' in document
+        );
+      };
+
+      const userAgent = navigator.userAgent.toLowerCase();
+      // Multiple iPad detection methods combined
+      const isIPad = 
+        /(ipad)/i.test(userAgent) || 
+        (/(macintosh)/i.test(userAgent) && 'ontouchend' in document) ||
+        isIPadOS() ||
+        (navigator.platform === 'iPad');
+        
+      const isTablet = /(tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle|playbook|silk|(puffin(?!.*(IP|AP|WP))))/.test(userAgent);
+      const isMobile = /iPhone|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      // Set to true if any detection method finds a mobile/tablet device
+      setIsMobileOrTablet(isIPad || isTablet || isMobile || window.innerWidth <= 768);
+      
+      // Log detection results (for debugging)
+      console.log("Device detection:", { isIPad, isTablet, isMobile, width: window.innerWidth });
+    };
+    
+    if (typeof window !== 'undefined') {
+      checkDevice();
+      window.addEventListener('resize', checkDevice);
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', checkDevice);
+      }
+    };
+  }, []);
   
   // Default layout sections if none are defined in the project
   const defaultLayoutSections = [
     { id: 'header', type: 'header', title: 'Header', active: true },
+    { id: 'project-info', type: 'project-info', title: 'Projekt-Informationen', active: true },
     { id: 'description', type: 'text', title: 'Beschreibung', active: true },
     { id: 'technologies', type: 'tags', title: 'Technologien', active: true },
     { id: 'details', type: 'details', title: 'Details', active: true }
@@ -277,6 +322,21 @@ export default function ProjectDetails({ projectId }) {
           </div>
         );
         
+      case 'project-info':
+        return (
+          <div key={section.id} className="card-section">
+            <h2>{section.title}</h2>
+            <div style={{ 
+              lineHeight: '1.6',
+              color: 'var(--text-color)'
+            }}>
+              <p>
+                Dieses Projekt zeigt die Modellierung eines mathematischen Stuhls in Blender mit Fokus auf geometrische Präzision und ästhetisches Design. Der Stuhl wurde mit Subdivision Surface-Techniken erstellt, um eine glatte und realistische Darstellung zu erreichen.
+              </p>
+            </div>
+          </div>
+        );
+        
       case 'text':
         return (
           <div key={section.id} className="card-section">
@@ -371,7 +431,25 @@ export default function ProjectDetails({ projectId }) {
                 {project.team && project.team.length > 0 ? (
                   <ul style={{ paddingLeft: '1.5rem', margin: 0 }}>
                     {project.team.map((member, index) => (
-                      <li key={index} style={{ marginBottom: '0.5rem' }}>{member}</li>
+                      <li key={index} style={{ marginBottom: '0.5rem' }}>
+                        <Link 
+                          href={`/team?member=${encodeURIComponent(member)}`}
+                          style={{
+                            color: 'var(--accent-blue)',
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.3rem'
+                          }}
+                        >
+                          {member}
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                          </svg>
+                        </Link>
+                      </li>
                     ))}
                   </ul>
                 ) : (
@@ -465,56 +543,42 @@ export default function ProjectDetails({ projectId }) {
         return (
           <div key={section.id} className="card-section">
             <h2>{section.title}</h2>
-            <div style={{ 
-              borderRadius: '8px',
-              overflow: 'hidden',
-              backgroundColor: 'var(--bg-darker)',
-              height: '500px'
-            }}>
-              <object
-                data={section.content}
-                type="application/pdf"
-                width="100%"
-                height="100%"
-                style={{ borderRadius: '8px' }}
-              >
-                <div style={{ 
-                  padding: '2rem',
-                  backgroundColor: 'var(--bg-darker)',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'column',
-                  color: 'var(--text-light)',
-                  height: '100%'
-                }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}>
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                  </svg>
-                  <p>Ihr Browser kann dieses PDF nicht anzeigen.</p>
-                  <a 
-                    href={section.content} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    style={{
-                      padding: '0.5rem 1rem',
-                      backgroundColor: 'var(--accent-blue)',
-                      color: 'white',
-                      borderRadius: '4px',
-                      textDecoration: 'none',
-                      marginTop: '1rem'
-                    }}
-                  >
-                    PDF öffnen
-                  </a>
-                </div>
-              </object>
-            </div>
+            
+            {/* Only render PDF viewer on desktop */}
+            {!isMobileOrTablet && (
+              <div className="pdf-container">
+                <embed
+                  src={section.content}
+                  type="application/pdf"
+                  width="100%"
+                  height="800px"
+                  className="pdf-viewer pdf-embed"
+                />
+              </div>
+            )}
+            
+            {/* Always show PDF button on mobile/tablet */}
+            {isMobileOrTablet && (
+              <div className="pdf-fallback">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                <p>Klicken Sie auf den Button, um das PDF zu öffnen.</p>
+                <a 
+                  href={section.content} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="pdf-download-button"
+                >
+                  PDF öffnen
+                </a>
+              </div>
+            )}
+            
             {section.description && (
               <div style={{ 
                 marginTop: '1rem',
@@ -585,6 +649,165 @@ export default function ProjectDetails({ projectId }) {
           main h2 {
             margin-top: 0;
             margin-bottom: 1rem;
+          }
+          
+          /* PDF Viewer Styles */
+          .pdf-container {
+            position: relative;
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: var(--bg-darker);
+            display: block;
+          }
+          
+          .pdf-viewer {
+            border-radius: 8px;
+            height: auto;
+            min-height: 800px;
+            display: block;
+          }
+          
+          .pdf-iframe {
+            border: none !important;
+            height: 800px !important;
+            min-height: 800px !important;
+            border-radius: 0 !important;
+            overflow: scroll !important;
+            -webkit-overflow-scrolling: touch !important; /* This is crucial for iPad scrolling */
+          }
+          
+          .pdf-embed {
+            height: 800px !important;
+            width: 100% !important; 
+            display: block !important;
+            border: none !important;
+          }
+          
+          .pdf-fallback {
+            padding: 2rem;
+            background-color: var(--bg-darker);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: var(--text-light);
+            height: 100%;
+          }
+          
+          .mobile-only {
+            display: none;
+          }
+          
+          .mobile-tablet-only {
+            display: none;
+          }
+          
+          .desktop-only {
+            display: block;
+          }
+          
+          .pdf-download-button {
+            padding: 0.5rem 1rem;
+            background-color: var(--accent-blue);
+            color: white;
+            border-radius: 4px;
+            text-decoration: none;
+            margin-top: 1rem;
+            display: inline-block;
+            text-align: center;
+          }
+          
+          /* Responsive adjustments */
+          @media (max-width: 768px) {
+            .pdf-container {
+              display: none !important;
+            }
+            
+            .pdf-viewer, .pdf-embed {
+              display: none !important;
+            }
+            
+            .desktop-only {
+              display: none !important;
+            }
+            
+            .mobile-tablet-only {
+              display: flex !important;
+            }
+            
+            .pdf-fallback {
+              display: flex !important;
+              min-height: 250px;
+            }
+            
+            .pdf-download-button {
+              width: 80%;
+              max-width: 300px;
+              margin-top: 1rem;
+              padding: 0.75rem 1rem;
+              font-size: 1rem;
+            }
+          }
+          
+          /* Special iPad targeting */
+          @media only screen and (min-device-width: 768px) and (max-device-width: 1024px) {
+            .pdf-container {
+              display: none !important;
+            }
+            
+            .pdf-viewer, .pdf-embed {
+              display: none !important;
+            }
+            
+            .pdf-fallback {
+              display: flex !important;
+            }
+          }
+          
+          /* Ensure PDFs don't display on touch devices as an additional safety measure */
+          @media (pointer: coarse) {
+            .pdf-container {
+              display: none !important;
+            }
+            
+            .pdf-viewer, .pdf-embed {
+              display: none !important;
+            }
+            
+            .pdf-fallback {
+              display: flex !important;
+            }
+          }
+          
+          @media (max-width: 480px) {
+            /* On mobile, hide the PDF viewer and show only download button */
+            .pdf-container {
+              height: auto;
+              min-height: 200px;
+            }
+            
+            .pdf-viewer {
+              display: none;
+            }
+            
+            .pdf-fallback {
+              display: flex !important;
+            }
+            
+            .mobile-only {
+              display: flex !important;
+            }
+            
+            .pdf-download-button {
+              width: 80%;
+              max-width: 300px;
+              margin-top: 1rem;
+              padding: 0.75rem 1rem;
+              font-size: 1rem;
+            }
           }
         `}</style>
       </Head>

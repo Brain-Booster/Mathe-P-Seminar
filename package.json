@@ -3,17 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000 -H 0.0.0.0",
-    "build": "next build",
-    "start": "next start",
+    "dev": "next dev -p 3001 -H 0.0.0.0",
+    "build": "cross-env NEXT_TELEMETRY_DISABLED=1 next build",
+    "build:analyze": "cross-env ANALYZE=true NEXT_TELEMETRY_DISABLED=1 next build",
+    "build:optimize": "npm run optimize-images && cross-env NEXT_TELEMETRY_DISABLED=1 next build",
+    "start": "cross-env NEXT_TELEMETRY_DISABLED=1 next start -p 3001",
     "lint": "next lint",
-    "server": "node scripts/server.js",
-    "simple-server": "node scripts/simple-server.js"
+    "optimize-images": "node scripts/optimize-images.js",
+    "deploy": "npm run build:optimize && pm2 startOrRestart ecosystem.config.js --env production"
   },
   "dependencies": {
-    "@google/model-viewer": "^4.0.0",
+    "@google/model-viewer": "^3.4.0",
+    "formidable": "^2.1.2",
     "next": "^14.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@next/bundle-analyzer": "^14.0.0",
+    "cross-env": "^7.0.3"
   }
-}
+} 

@@ -10,6 +10,7 @@ export default function AdminDashboard() {
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
   const [stats, setStats] = useState({ projectCount: 0, visitorCount: 0 });
+  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch real stats when the component mounts
@@ -44,6 +45,70 @@ export default function AdminDashboard() {
     };
   }, []);
 
+  // Fetch activities
+  useEffect(() => {
+    const fetchActivities = async () => {
+      try {
+        const response = await fetch('/api/activities', {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch activities');
+        }
+        const data = await response.json();
+        
+        // Additional client-side deduplication (in case there are legacy duplicates in the database)
+        const uniqueActivities = [];
+        const textSet = new Set();
+        
+        data.forEach(activity => {
+          if (!textSet.has(activity.text)) {
+            textSet.add(activity.text);
+            uniqueActivities.push(activity);
+          }
+        });
+        
+        setActivities(uniqueActivities);
+      } catch (error) {
+        console.error('Error fetching activities:', error);
+      }
+    };
+
+    fetchActivities();
+
+    // Set up polling to refresh activities
+    const intervalId = setInterval(fetchActivities, 5000); // Refresh every 5 seconds
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  // Function to format timestamp to readable format
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    // If it's today
+    if (date.toDateString() === now.toDateString()) {
+      return `Heute, ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    }
+    
+    // If it's yesterday
+    if (date.toDateString() === yesterday.toDateString()) {
+      return `Gestern, ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    }
+    
+    // Otherwise, return the date
+    const options = { day: 'numeric', month: 'long', year: 'numeric' };
+    return date.toLocaleDateString('de-DE', options);
+  };
+
   return (
     <div className={styles.container}>
       <Head>
@@ -75,8 +140,14 @@ export default function AdminDashboard() {
             <AdminCard 
               title="Projekte verwalten" 
               description="Projekte erstellen, bearbeiten und löschen" 
-              href="/admin/projects" 
+              href="/contact/projects" 
               icon="📁" 
+            />
+            <AdminCard 
+              title="Team Mitglieder Verwalten" 
+              description="Team Mitglieder hinzufügen, bearbeiten und löschen" 
+              href="/contact/team" 
+              icon="👥" 
             />
           </div>
           
@@ -122,22 +193,29 @@ export default function AdminDashboard() {
               marginBottom: '1rem', 
               color: 'var(--heading-color)' 
             }}>
-              Neueste Aktivitäten
+              Letzte Aktivitäten
             </h2>
             
-            <div style={{ color: 'var(--text-color)' }}>
-              <ActivityItem 
-                text="3D Stuhl-Modellierung Projekt aktualisiert" 
-                time="Heute, 15:45" 
-              />
-              <ActivityItem 
-                text="Neues Modell hochgeladen: chair.glb" 
-                time="Gestern, 10:23" 
-              />
-              <ActivityItem 
-                text="Projekt 'Projekt Zwei' bearbeitet" 
-                time="19. März 2023" 
-              />
+            <div style={{ 
+              color: 'var(--text-color)',
+              maxHeight: activities.length > 3 ? '300px' : 'auto',
+              overflowY: activities.length > 3 ? 'auto' : 'visible',
+              paddingRight: activities.length > 3 ? '8px' : '0'
+            }}>
+              {activities.length > 0 ? (
+                activities.map((activity) => (
+                  <ActivityItem 
+                    key={activity.id}
+                    text={activity.text} 
+                    time={formatTimestamp(activity.timestamp)}
+                    type={activity.type}
+                  />
+                ))
+              ) : (
+                <div style={{ padding: '1rem 0', fontSize: '0.9rem' }}>
+                  Keine Aktivitäten gefunden.
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -218,15 +296,32 @@ function StatCard({ title, value }) {
 }
 
 // Activity item component
-function ActivityItem({ text, time }) {
+function ActivityItem({ text, time, type }) {
+  const getActivityIcon = () => {
+    if (type === 'project') {
+      return '📁';
+    } else if (type === 'team') {
+      return '👤';
+    }
+    return '📝';
+  };
+
   return (
     <div style={{ 
       padding: '0.8rem 0', 
       borderBottom: '1px solid var(--border-color)',
-      fontSize: '0.9rem'
+      fontSize: '0.9rem',
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: '0.8rem'
     }}>
-      <div style={{ marginBottom: '0.3rem' }}>{text}</div>
-      <div style={{ color: 'var(--text-light)', fontSize: '0.8rem' }}>{time}</div>
+      <div style={{ fontSize: '1.2rem', marginTop: '2px' }}>
+        {getActivityIcon()}
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ marginBottom: '0.3rem' }}>{text}</div>
+        <div style={{ color: 'var(--text-light)', fontSize: '0.8rem' }}>{time}</div>
+      </div>
     </div>
   );
 } 

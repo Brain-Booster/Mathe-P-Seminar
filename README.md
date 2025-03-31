@@ -1,11 +1,57 @@
-<<<<<<< HEAD
-# School Project Website
+# P-Seminar Project
 
-This is a Next.js-based website created for a school project. The website features a clean, responsive design and provides information about the project.
+A mathematics and 3D modeling project for school, built with Next.js.
+
+## Project Structure
+
+```
+p-seminar/
+│
+├── public/              # Static assets
+│   ├── images/          # Static images
+│   ├── models/          # 3D models
+│   ├── team/            # Team member images
+│   └── uploads/         # User uploads
+│
+├── src/                 # All source code
+│   │
+│   ├── pages/           # Next.js pages
+│   │   ├── api/         # API endpoints
+│   │   ├── admin/       # Admin area
+│   │   └── projects/    # Project pages
+│   │
+│   ├── components/      # React components
+│   │   ├── common/      # Common UI components
+│   │   ├── projects/    # Project-related components
+│   │   ├── team/        # Team-related components
+│   │   ├── admin/       # Admin-specific components
+│   │   └── models/      # 3D model components
+│   │
+│   ├── styles/          # CSS styles
+│   │   ├── modules/     # CSS modules
+│   │   └── globals.css  # Global styles
+│   │
+│   ├── contexts/        # React context providers
+│   ├── lib/             # Utility libraries
+│   ├── hooks/           # Custom React hooks
+│   └── config/          # Configuration files
+│
+├── data/                # Data storage
+│
+└── scripts/             # Utility scripts
+```
 
 ## Getting Started
 
-To run the development server:
+First, install the dependencies:
+
+```bash
+npm install
+# or
+yarn install
+```
+
+Then, run the development server:
 
 ```bash
 npm run dev
@@ -13,34 +59,58 @@ npm run dev
 yarn dev
 ```
 
-Open [http://localhost:33355](http://localhost:33355) with your browser to see the result.
+Open [http://localhost:3001](http://localhost:3001) with your browser to see the result.
 
 ## Features
 
-- Modern UI with responsive design
-- Information about the project and team
-- Resources and contact information
+- Admin dashboard for managing projects and team members
+- Activity tracking for projects and team members
+- 3D model viewer for displaying models
+- Responsive design for mobile and desktop
+- Dark/light theme support
 
-## Technologies Used
+## Development
 
-- Next.js
-- React
-- CSS Modules
+### Environment Variables
 
-## Project Structure
+Create a `.env.local` file based on `.env.example` to set up your environment variables.
 
-- `/pages` - Next.js pages
-- `/components` - Reusable React components
-- `/styles` - CSS styles and modules
-- `/public` - Static assets
+### API Routes
 
-## Learn More
+The API routes are organized by resource type:
 
-To learn more about Next.js, take a look at the following resources:
+- `/api/projects` - Projects API
+- `/api/team` - Team members API
+- `/api/activities` - Activity tracking API
+- `/api/uploads` - File upload API
+- `/api/stats` - Statistics API
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial. 
-=======
-# Mathe-P-Seminar
-Mathe-P-Seminar
->>>>>>> 383919bb35d513c18f5915928b314e6dfcc2612b
+### Database
+
+The project uses JSON files for data storage, located in the `data` directory:
+
+- `projects.json` - Project data
+- `team.json` - Team member data
+- `activities.json` - Activity tracking data
+
+## Deployment
+
+Build the project for production:
+
+```bash
+npm run build
+# or
+yarn build
+```
+
+Start the production server:
+
+```bash
+npm run start
+# or
+yarn start
+```
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

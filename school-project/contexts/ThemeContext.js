@@ -3,7 +3,7 @@ import { createContext, useState, useContext, useEffect } from 'react';
 const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState('light');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
@@ -12,6 +12,9 @@ export function ThemeProvider({ children }) {
     if (storedTheme) {
       setTheme(storedTheme);
       document.documentElement.setAttribute('data-theme', storedTheme);
+    } else {
+      // Set light theme as default if no preference is stored
+      document.documentElement.setAttribute('data-theme', 'light');
     }
   }, []);
 

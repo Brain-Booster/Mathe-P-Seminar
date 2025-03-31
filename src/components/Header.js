@@ -104,7 +104,7 @@ export default function Header() {
                 </a>
               </li>
               <li>
-                <a href="#about" style={{ 
+                <a href="/about" style={{ 
                   textDecoration: 'none', 
                   color: isDarkMode ? '#e0e0e0' : '#333', 
                   fontWeight: 500,

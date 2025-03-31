@@ -59,19 +59,24 @@ export default function ModelView() {
           {/* Navigation */}
           <div style={{ marginBottom: '1.5rem' }}>
             <Link 
-              href="/admin/models"
-              style={{ 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                color: 'var(--text-light)',
-                fontSize: '0.95rem',
-                transition: 'color 0.2s ease'
+              href="/contact/models"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                color: 'white',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                textDecoration: 'none',
+                padding: '0.5rem 1rem',
+                borderRadius: '4px',
+                fontSize: '0.9rem',
+                transition: 'background-color 0.2s',
+                backdropFilter: 'blur(10px)'
               }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem' }}>
                 <polyline points="15 18 9 12 15 6"></polyline>
               </svg>
-              Zurück zur Modellübersicht
+              Zurück zur Übersicht
             </Link>
           </div>
 

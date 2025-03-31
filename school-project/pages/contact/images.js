@@ -136,7 +136,7 @@ export default function AdminImages() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <div>
               <Link 
-                href="/admin"
+                href="/contact"
                 style={{ 
                   display: 'inline-flex', 
                   alignItems: 'center', 

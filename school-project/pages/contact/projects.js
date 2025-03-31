@@ -3,17 +3,22 @@ import styles from '../../styles/Home.module.css';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Script from 'next/script';
+import { getClientProjects, getClientProjectsSync, updateMockProjects } from '../../models.js';
 import dynamic from 'next/dynamic';
-import { mockProjects, updateMockProjects, getClientProjects, getClientProjectsSync } from '../../models.js';
+import { getClientTeamMembers, getClientTeamMembersSync } from '../../models';
+import { updateTeamMembers } from '../../models';
 
 // Import ThreeJsViewer with SSR disabled
 const ThreeJsViewer = dynamic(() => import('../../components/ThreeJsViewer'), { ssr: false });
 
+// Import ModelViewer with SSR disabled
+const ModelViewer = dynamic(() => import('../../components/ModelViewer'), { ssr: false });
+
 // Use the default projects for server-side rendering
-const initialProjects = mockProjects;
+const initialProjects = getClientProjectsSync();
 
 // Available categories for select dropdown
 const availableCategories = [
@@ -36,6 +41,7 @@ export default function AdminProjects() {
   const [activeTab, setActiveTab] = useState('list'); // 'list', 'edit', 'new'
   const [selectedProject, setSelectedProject] = useState(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
     id: '',
     title: '',
@@ -67,12 +73,32 @@ export default function AdminProjects() {
   const sectionModelInputRef = useRef(null);
   const pdfInputRef = useRef(null);
   const sectionPdfInputRef = useRef(null);
+  
+  // Add separate refs for edit section form
+  const editSectionFileInputRef = useRef(null);
+  const editSectionModelInputRef = useRef(null);
+  const editSectionPdfInputRef = useRef(null);
+  
   const [newSectionTitle, setNewSectionTitle] = useState('');
   const [newSectionType, setNewSectionType] = useState('text');
   const [newSectionContent, setNewSectionContent] = useState('');
   const [newSectionModel, setNewSectionModel] = useState('');
   const [newSectionImage, setNewSectionImage] = useState('');
   const [newSectionPdf, setNewSectionPdf] = useState('');
+  
+  // Add new state variables for section editing
+  const [editingSectionId, setEditingSectionId] = useState(null);
+  const [editSectionTitle, setEditSectionTitle] = useState('');
+  const [editSectionType, setEditSectionType] = useState('text');
+  const [editSectionContent, setEditSectionContent] = useState('');
+  const [editSectionImage, setEditSectionImage] = useState('');
+  const [editSectionModel, setEditSectionModel] = useState('');
+  const [editSectionPdf, setEditSectionPdf] = useState('');
+  
+  // State for team members
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [teamMemberSearch, setTeamMemberSearch] = useState('');
+  const [isTeamDropdownOpen, setIsTeamDropdownOpen] = useState(false);
   
   // Load client-side projects from server API on component mount
   useEffect(() => {
@@ -118,12 +144,40 @@ export default function AdminProjects() {
     }
   }, [activeTab]);
 
+  // Load initial data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch projects
+        const fetchedProjects = await getClientProjects();
+        setProjects(fetchedProjects);
+        
+        // Fetch team members
+        const fetchedTeamMembers = await getClientTeamMembers();
+        setTeamMembers(fetchedTeamMembers);
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setIsLoading(false);
+      }
+    };
+    
+    // Set initial data synchronously
+    if (!isHydrated) {
+      setProjects(getClientProjectsSync());
+      setTeamMembers(getClientTeamMembersSync());
+    }
+    
+    fetchData();
+  }, [isHydrated]);
+
   // Filter projects based on search term
   const filteredProjects = isHydrated
     ? projects.filter(project => 
-        project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.category.toLowerCase().includes(searchTerm.toLowerCase())
+    project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    project.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    project.category.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : [];
 
@@ -213,22 +267,92 @@ export default function AdminProjects() {
   };
 
   // Handle adding team members
-  const handleAddTeamMember = () => {
-    if (newTeamMember.trim() !== '' && !formData.team.includes(newTeamMember.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        team: [...prev.team, newTeamMember.trim()]
-      }));
-      setNewTeamMember('');
+  const handleAddTeamMember = (memberId) => {
+    if (!memberId) return;
+    
+    const memberToAdd = teamMembers.find(m => m.id === memberId);
+    if (!memberToAdd) return;
+    
+    const fullName = `${memberToAdd.name} ${memberToAdd.nachname}`;
+    
+    // Check if member is already in the team
+    if (formData.team.includes(fullName)) {
+      return; // Member already in team
     }
+    
+    // Update form data with new team member
+    setFormData({
+      ...formData,
+      team: [...formData.team, fullName]
+    });
+    
+    // Update team member with project reference
+    const updatedTeamMember = {
+      ...memberToAdd,
+      projekt: formData.title,
+      projektId: formData.id.toString()
+    };
+    
+    // Find index of team member to update
+    const memberIndex = teamMembers.findIndex(m => m.id === memberId);
+    if (memberIndex !== -1) {
+      const updatedTeamMembers = [...teamMembers];
+      updatedTeamMembers[memberIndex] = updatedTeamMember;
+      setTeamMembers(updatedTeamMembers);
+      
+      // Update the team members on the server using the updateTeamMembers function from models.js
+      updateTeamMembers(updatedTeamMembers)
+        .then(() => {
+          console.log('Team member updated successfully with project reference');
+        })
+        .catch(error => {
+          console.error('Error updating team member:', error);
+        });
+    }
+    
+    // Reset search and close dropdown
+    setTeamMemberSearch('');
+    setIsTeamDropdownOpen(false);
   };
 
   // Handle removing team members
   const handleRemoveTeamMember = (memberToRemove) => {
+    // Update the form data to remove the team member
     setFormData(prev => ({
       ...prev,
       team: prev.team.filter(member => member !== memberToRemove)
     }));
+    
+    // Find the team member in the team members array
+    const teamMember = teamMembers.find(member => 
+      `${member.name} ${member.nachname}` === memberToRemove && 
+      member.projektId === formData.id.toString()
+    );
+    
+    // If found, update the team member to remove the project reference
+    if (teamMember) {
+      const updatedTeamMembers = teamMembers.map(member => {
+        if (member.id === teamMember.id) {
+          return {
+            ...member,
+            projekt: '',
+            projektId: ''
+          };
+        }
+        return member;
+      });
+      
+      // Update team members on the server using updateTeamMembers from models.js
+      updateTeamMembers(updatedTeamMembers)
+        .then(() => {
+          console.log('Team member project reference removed successfully');
+          // Update local state
+          setTeamMembers(updatedTeamMembers);
+        })
+        .catch(error => {
+          console.error('Error updating team member:', error);
+        });
+    }
   };
 
   // Handle layout section toggle
@@ -289,14 +413,14 @@ export default function AdminProjects() {
       try {
         let updatedProjects;
         
-        if (activeTab === 'edit') {
-          // Update existing project
+      if (activeTab === 'edit') {
+        // Update existing project
           updatedProjects = projects.map(project => 
-            project.id === projectData.id ? { ...projectData } : project
-          );
-        } else {
-          // Add new project
-          const newProject = { ...projectData };
+          project.id === projectData.id ? { ...projectData } : project
+        );
+      } else {
+        // Add new project
+        const newProject = { ...projectData };
           updatedProjects = [...projects, newProject];
         }
         
@@ -305,10 +429,10 @@ export default function AdminProjects() {
         
         // Then update on the server
         await updateMockProjects(updatedProjects);
-        
-        setIsSubmitting(false);
-        setActiveTab('list');
-        setSelectedProject(null);
+      
+      setIsSubmitting(false);
+      setActiveTab('list');
+      setSelectedProject(null);
 
         // Show success message and option to view the project
         const projectId = projectData.id;
@@ -507,7 +631,9 @@ export default function AdminProjects() {
 
   // Handle section image upload
   const handleSectionImageUpload = () => {
+    if (sectionFileInputRef.current) {
     sectionFileInputRef.current.click();
+    }
   };
 
   // Handle section image file selection
@@ -543,7 +669,9 @@ export default function AdminProjects() {
 
   // Handle section 3D model upload
   const handleSectionModelUpload = () => {
+    if (sectionModelInputRef.current) {
     sectionModelInputRef.current.click();
+    }
   };
 
   // Handle section 3D model file selection
@@ -579,7 +707,9 @@ export default function AdminProjects() {
 
   // Handle section PDF upload
   const handleSectionPdfUpload = () => {
-    sectionPdfInputRef.current.click();
+    if (sectionPdfInputRef.current) {
+      sectionPdfInputRef.current.click();
+    }
   };
 
   // Handle section PDF file selection
@@ -850,6 +980,223 @@ export default function AdminProjects() {
       item.classList.remove('gap-after');
     });
   };
+
+  // Handle editing a section
+  const handleEditSection = (section) => {
+    // Don't allow editing default components
+    if (isDefaultComponent(section.id)) {
+      return;
+    }
+    
+    setEditingSectionId(section.id);
+    setEditSectionTitle(section.title);
+    setEditSectionType(section.type);
+    setEditSectionContent(section.type === 'text' ? section.content : section.description || '');
+    setEditSectionImage(section.type === 'image' ? section.content : '');
+    setEditSectionModel(section.type === '3d-model' ? section.content : '');
+    setEditSectionPdf(section.type === 'pdf' ? section.content : '');
+  };
+
+  // Handle saving edited section
+  const handleSaveEditedSection = () => {
+    if (!editSectionTitle) {
+      alert('Bitte einen Titel für den Abschnitt eingeben.');
+      return;
+    }
+    
+    let content = '';
+    let description = '';
+    
+    // Set content based on section type
+    if (editSectionType === 'text') {
+      content = editSectionContent;
+    } else if (editSectionType === 'image') {
+      content = editSectionImage;
+      description = editSectionContent; // Use content as description for image
+    } else if (editSectionType === '3d-model') {
+      content = editSectionModel;
+      description = editSectionContent;
+    } else if (editSectionType === 'pdf') {
+      content = editSectionPdf;
+      description = editSectionContent;
+    }
+    
+    // Required fields validation
+    if ((editSectionType === 'image' && !content) || 
+        (editSectionType === '3d-model' && !content) || 
+        (editSectionType === 'pdf' && !content)) {
+      alert(`Bitte wählen Sie eine Datei für den ${
+        editSectionType === 'image' ? 'Bild' : 
+        editSectionType === '3d-model' ? '3D-Modell' : 'PDF'
+      }-Abschnitt aus.`);
+      return;
+    }
+    
+    // Update the section in layoutSections
+    const updatedSections = layoutSections.map(section => {
+      if (section.id === editingSectionId) {
+        return {
+          ...section,
+          title: editSectionTitle,
+          type: editSectionType,
+          content: content,
+          description: description
+        };
+      }
+      return section;
+    });
+    
+    setLayoutSections(updatedSections);
+    
+    // Reset edit form fields
+    setEditingSectionId(null);
+    setEditSectionTitle('');
+    setEditSectionType('text');
+    setEditSectionContent('');
+    setEditSectionImage('');
+    setEditSectionModel('');
+    setEditSectionPdf('');
+  };
+
+  // Cancel editing section
+  const handleCancelEdit = () => {
+    setEditingSectionId(null);
+    setEditSectionTitle('');
+    setEditSectionType('text');
+    setEditSectionContent('');
+    setEditSectionImage('');
+    setEditSectionModel('');
+    setEditSectionPdf('');
+  };
+
+  // EDIT SECTION UPLOAD HANDLERS
+  
+  // Handle edit section image upload
+  const handleEditSectionImageUpload = () => {
+    if (editSectionFileInputRef.current) {
+      editSectionFileInputRef.current.click();
+    }
+  };
+
+  // Handle edit section image file selection
+  const handleEditSectionFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fileType', 'image');
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      const data = await response.json();
+      
+      setEditSectionImage(data.fileUrl);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Fehler beim Hochladen des Bildes. Bitte versuchen Sie es erneut.');
+    }
+    
+    // Reset file input
+    e.target.value = '';
+  };
+
+  // Handle edit section 3D model upload
+  const handleEditSectionModelUpload = () => {
+    if (editSectionModelInputRef.current) {
+      editSectionModelInputRef.current.click();
+    }
+  };
+
+  // Handle edit section 3D model file selection
+  const handleEditSectionModelFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fileType', 'model');
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      const data = await response.json();
+      
+      setEditSectionModel(data.fileUrl);
+    } catch (error) {
+      console.error('Error uploading model:', error);
+      alert('Fehler beim Hochladen des 3D-Modells. Bitte versuchen Sie es erneut.');
+    }
+    
+    // Reset file input
+    e.target.value = '';
+  };
+
+  // Handle edit section PDF upload
+  const handleEditSectionPdfUpload = () => {
+    if (editSectionPdfInputRef.current) {
+      editSectionPdfInputRef.current.click();
+    }
+  };
+
+  // Handle edit section PDF file selection
+  const handleEditSectionPdfFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fileType', 'pdf');
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      const data = await response.json();
+      
+      setEditSectionPdf(data.fileUrl);
+    } catch (error) {
+      console.error('Error uploading PDF:', error);
+      alert('Fehler beim Hochladen des PDFs. Bitte versuchen Sie es erneut.');
+    }
+    
+    // Reset file input
+    e.target.value = '';
+  };
+
+  // Check if a section is a default component
+  const isDefaultComponent = (sectionId) => {
+    // These are the IDs of default components that should not be editable
+    const defaultComponentIds = ['header', 'description', 'technologies', 'model', 'details', 'project-info'];
+    return defaultComponentIds.includes(sectionId);
+  };
+  
+  // Filter team members based on search term
+  const filteredTeamMembers = teamMembers.filter(member => {
+    const fullName = `${member.name} ${member.nachname}`.toLowerCase();
+    return fullName.includes(teamMemberSearch.toLowerCase());
+  });
   
   return (
     <div className={styles.container}>
@@ -857,6 +1204,11 @@ export default function AdminProjects() {
         <title>Projekte verwalten | Schulprojekt</title>
         <meta name="description" content="Projekte verwalten" />
         <link rel="icon" href="/favicon.ico" />
+        <Script 
+          src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js" 
+          type="module"
+          strategy="beforeInteractive"
+        />
         <style jsx global>{`
           .dragging {
             opacity: 0.8;
@@ -937,11 +1289,6 @@ export default function AdminProjects() {
             bottom: -20px;
           }
         `}</style>
-        <Script 
-          src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js" 
-          type="module"
-          strategy="beforeInteractive"
-        />
         <style>{`
           @keyframes spin {
             from { transform: rotate(0deg); }
@@ -958,7 +1305,7 @@ export default function AdminProjects() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <div>
               <Link 
-                href="/admin"
+                href="/contact"
                 style={{ 
                   display: 'inline-flex', 
                   alignItems: 'center', 
@@ -968,9 +1315,10 @@ export default function AdminProjects() {
                 }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
-                  <polyline points="15 18 9 12 15 6"></polyline>
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
                 </svg>
-                Zurück zum Dashboard
+                Dashboard
               </Link>
               <h1 style={{ 
                 fontSize: '2.5rem', 
@@ -1079,120 +1427,120 @@ export default function AdminProjects() {
                       overflowX: 'auto', 
                       WebkitOverflowScrolling: 'touch',
                       width: '100%' 
-                    }}>
-                      <table style={{ 
-                        width: '100%', 
+              }}>
+                <table style={{ 
+                  width: '100%', 
                         minWidth: '700px', /* Ensure minimum width for small screens */
-                        borderCollapse: 'collapse',
-                        color: 'var(--text-color)',
-                        fontSize: '0.95rem'
+                  borderCollapse: 'collapse',
+                  color: 'var(--text-color)',
+                  fontSize: '0.95rem'
+                }}>
+                  <thead>
+                    <tr style={{ 
+                      backgroundColor: 'var(--bg-lighter)', 
+                      borderBottom: '1px solid var(--border-color)'
+                    }}>
+                      <th style={{ padding: '1rem', textAlign: 'left' }}>ID</th>
+                      <th style={{ padding: '1rem', textAlign: 'left' }}>Titel</th>
+                      <th style={{ padding: '1rem', textAlign: 'left' }}>Kategorie</th>
+                      <th style={{ padding: '1rem', textAlign: 'left' }}>Status</th>
+                      <th style={{ padding: '1rem', textAlign: 'right' }}>Aktionen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProjects.map(project => (
+                      <tr key={project.id} style={{ 
+                        borderBottom: '1px solid var(--border-color)',
+                        ':hover': { backgroundColor: 'var(--bg-darker)' }
                       }}>
-                        <thead>
-                          <tr style={{ 
-                            backgroundColor: 'var(--bg-lighter)', 
-                            borderBottom: '1px solid var(--border-color)'
+                        <td style={{ padding: '1rem' }}>{project.id}</td>
+                        <td style={{ padding: '1rem' }}>{project.title}</td>
+                        <td style={{ padding: '1rem' }}>{project.category}</td>
+                        <td style={{ padding: '1rem' }}>
+                          <span style={{ 
+                            padding: '0.3rem 0.6rem',
+                            borderRadius: '4px',
+                            fontSize: '0.85rem',
+                            backgroundColor: project.completed ? 'rgba(var(--accent-lime-rgb), 0.15)' : 'rgba(var(--accent-yellow-rgb), 0.15)',
+                            color: project.completed ? 'var(--accent-lime)' : 'var(--accent-yellow)'
                           }}>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>ID</th>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>Titel</th>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>Kategorie</th>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>Status</th>
-                            <th style={{ padding: '1rem', textAlign: 'right' }}>Aktionen</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredProjects.map(project => (
-                            <tr key={project.id} style={{ 
-                              borderBottom: '1px solid var(--border-color)',
-                              ':hover': { backgroundColor: 'var(--bg-darker)' }
-                            }}>
-                              <td style={{ padding: '1rem' }}>{project.id}</td>
-                              <td style={{ padding: '1rem' }}>{project.title}</td>
-                              <td style={{ padding: '1rem' }}>{project.category}</td>
-                              <td style={{ padding: '1rem' }}>
-                                <span style={{ 
-                                  padding: '0.3rem 0.6rem',
-                                  borderRadius: '4px',
-                                  fontSize: '0.85rem',
-                                  backgroundColor: project.completed ? 'rgba(var(--accent-lime-rgb), 0.15)' : 'rgba(var(--accent-yellow-rgb), 0.15)',
-                                  color: project.completed ? 'var(--accent-lime)' : 'var(--accent-yellow)'
-                                }}>
-                                  {project.completed ? 'Abgeschlossen' : 'In Bearbeitung'}
-                                </span>
-                              </td>
-                              <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                  <button 
-                                    onClick={() => handleEditProject(project)}
-                                    style={{ 
-                                      padding: '0.4rem',
-                                      backgroundColor: 'rgba(var(--accent-blue-rgb), 0.1)',
-                                      color: 'var(--accent-blue)',
-                                      border: 'none',
-                                      borderRadius: '4px',
-                                      cursor: 'pointer'
-                                    }}
-                                    title="Bearbeiten"
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                    </svg>
-                                  </button>
-                                  <Link 
-                                    href={`/projects/${project.id}`}
-                                    target="_blank"
-                                    style={{ 
-                                      padding: '0.4rem',
-                                      backgroundColor: 'rgba(var(--text-light-rgb), 0.1)',
-                                      color: 'var(--text-light)',
-                                      border: 'none',
-                                      borderRadius: '4px',
-                                      cursor: 'pointer',
-                                      display: 'inline-flex'
-                                    }}
-                                    title="Anzeigen"
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                      <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                  </Link>
-                                  <button 
-                                    onClick={() => handleDeleteProject(project.id)}
-                                    style={{ 
-                                      padding: '0.4rem',
-                                      backgroundColor: 'rgba(var(--accent-red-rgb), 0.1)',
-                                      color: 'var(--accent-red)',
-                                      border: 'none',
-                                      borderRadius: '4px',
-                                      cursor: 'pointer'
-                                    }}
-                                    title="Löschen"
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <polyline points="3 6 5 6 21 6"></polyline>
-                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                      <line x1="10" y1="11" x2="10" y2="17"></line>
-                                      <line x1="14" y1="11" x2="14" y2="17"></line>
-                                    </svg>
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                            {project.completed ? 'Abgeschlossen' : 'In Bearbeitung'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '1rem', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                            <button 
+                              onClick={() => handleEditProject(project)}
+                              style={{ 
+                                padding: '0.4rem',
+                                backgroundColor: 'rgba(var(--accent-blue-rgb), 0.1)',
+                                color: 'var(--accent-blue)',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                              title="Bearbeiten"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                              </svg>
+                            </button>
+                            <Link 
+                              href={`/projects/${project.id}`}
+                              target="_blank"
+                              style={{ 
+                                padding: '0.4rem',
+                                backgroundColor: 'rgba(var(--text-light-rgb), 0.1)',
+                                color: 'var(--text-light)',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                display: 'inline-flex'
+                              }}
+                              title="Anzeigen"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                              </svg>
+                            </Link>
+                            <button 
+                              onClick={() => handleDeleteProject(project.id)}
+                              style={{ 
+                                padding: '0.4rem',
+                                backgroundColor: 'rgba(var(--accent-red-rgb), 0.1)',
+                                color: 'var(--accent-red)',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                              title="Löschen"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
                     </div>
-                    
-                    {filteredProjects.length === 0 && (
-                      <div style={{ 
-                        padding: '2rem 0', 
-                        textAlign: 'center', 
-                        color: 'var(--text-light)'
-                      }}>
-                        Keine Projekte gefunden.
-                      </div>
-                    )}
+                
+                {filteredProjects.length === 0 && (
+                  <div style={{ 
+                    padding: '2rem 0', 
+                    textAlign: 'center', 
+                    color: 'var(--text-light)'
+                  }}>
+                    Keine Projekte gefunden.
+                  </div>
+                )}
                   </>
                 ) : (
                   <div style={{ 
@@ -1389,12 +1737,14 @@ export default function AdminProjects() {
                           >
                             Kategorie *
                           </label>
-                          <select
+                          <input
+                            type="text"
                             id="category"
                             name="category"
                             value={formData.category}
                             onChange={handleInputChange}
                             required
+                            placeholder="Kategorie eingeben"
                             style={{
                               width: '100%',
                               padding: '0.75rem',
@@ -1404,14 +1754,7 @@ export default function AdminProjects() {
                               color: 'var(--text-color)',
                               fontSize: '1rem'
                             }}
-                          >
-                            <option value="">-- Kategorie wählen --</option>
-                            {availableCategories.map((category, index) => (
-                              <option key={index} value={category}>
-                                {category}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </div>
 
                         {/* Completed checkbox */}
@@ -1434,6 +1777,97 @@ export default function AdminProjects() {
                             />
                             Projekt abgeschlossen
                           </label>
+                        </div>
+                        
+                        {/* Project header image upload */}
+                        <div style={{ marginBottom: '1.25rem' }}>
+                          <label
+                            style={{
+                              display: 'block',
+                              marginBottom: '0.5rem',
+                              fontSize: '0.9rem',
+                              color: 'var(--text-color)'
+                            }}
+                          >
+                            Projektbild
+                          </label>
+                          
+                          {formData.image ? (
+                            <div style={{
+                              position: 'relative',
+                              marginBottom: '0.75rem'
+                            }}>
+                              <img 
+                                src={formData.image}
+                                alt="Projektbild Vorschau"
+                                style={{
+                                  width: '100%',
+                                  height: 'auto',
+                                  maxHeight: '200px',
+                                  objectFit: 'cover',
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--border-color)'
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, image: '' }))}
+                                style={{
+                                  position: 'absolute',
+                                  top: '0.5rem',
+                                  right: '0.5rem',
+                                  width: '30px',
+                                  height: '30px',
+                                  borderRadius: '50%',
+                                  backgroundColor: 'rgba(0,0,0,0.7)',
+                                  color: 'white',
+                                  border: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleImageUpload}
+                              style={{
+                                width: '100%',
+                                padding: '1rem',
+                                border: '2px dashed var(--border-color)',
+                                borderRadius: '6px',
+                                backgroundColor: 'var(--bg-lighter)',
+                                color: 'var(--text-light)',
+                                cursor: 'pointer',
+                                textAlign: 'center',
+                                fontSize: '0.9rem'
+                              }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem', display: 'inline-block', verticalAlign: 'middle' }}>
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                <polyline points="21 15 16 10 5 21"></polyline>
+                              </svg>
+                              Projektbild hochladen
+                            </button>
+                          )}
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                          />
+                          <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.25rem' }}>
+                            Dieses Bild wird als Kopfzeile des Projekts angezeigt
+                          </p>
                         </div>
                       </div>
 
@@ -1559,12 +1993,16 @@ export default function AdminProjects() {
                             Team-Mitglieder
                           </label>
 
-                          <div style={{ display: 'flex', marginBottom: '1rem' }}>
+                          <div style={{ display: 'flex', marginBottom: '1rem', position: 'relative' }}>
                             <input
                               type="text"
-                              value={newTeamMember}
-                              onChange={(e) => setNewTeamMember(e.target.value)}
-                              placeholder="Neues Mitglied hinzufügen"
+                              value={teamMemberSearch}
+                              onChange={(e) => {
+                                setTeamMemberSearch(e.target.value);
+                                setIsTeamDropdownOpen(true);
+                              }}
+                              onClick={() => setIsTeamDropdownOpen(true)}
+                              placeholder="Teammitglieder suchen..."
                               style={{
                                 flex: 1,
                                 padding: '0.75rem',
@@ -1575,16 +2013,10 @@ export default function AdminProjects() {
                                 color: 'var(--text-color)',
                                 fontSize: '1rem'
                               }}
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  handleAddTeamMember();
-                                }
-                              }}
                             />
                             <button
                               type="button"
-                              onClick={handleAddTeamMember}
+                              onClick={() => setIsTeamDropdownOpen(!isTeamDropdownOpen)}
                               style={{
                                 padding: '0 1rem',
                                 backgroundColor: 'var(--accent-blue)',
@@ -1594,8 +2026,83 @@ export default function AdminProjects() {
                                 cursor: 'pointer'
                               }}
                             >
-                              +
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M18 15l-6-6-6 6"/>
+                              </svg>
                             </button>
+                            
+                            {isTeamDropdownOpen && (
+                              <div 
+                                style={{
+                                  position: 'absolute',
+                                  top: '100%',
+                                  left: 0,
+                                  right: 0,
+                                  maxHeight: '200px',
+                                  overflowY: 'auto',
+                                  backgroundColor: 'var(--card-bg)',
+                                  border: '1px solid var(--border-color)',
+                                  borderRadius: '0 0 6px 6px',
+                                  zIndex: 10,
+                                  boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                                }}
+                              >
+                                {filteredTeamMembers.length > 0 ? (
+                                  filteredTeamMembers.map(member => (
+                                    <div 
+                                      key={member.id}
+                                      onClick={() => handleAddTeamMember(member.id)}
+                                      style={{
+                                        padding: '0.75rem',
+                                        borderBottom: '1px solid var(--border-color)',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem'
+                                      }}
+                                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-lighter)'}
+                                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                    >
+                                      <div style={{ 
+                                        width: '30px', 
+                                        height: '30px', 
+                                        borderRadius: '50%', 
+                                        overflow: 'hidden',
+                                        backgroundColor: '#f0f0f0',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                      }}>
+                                        {member.profileImage ? (
+                                          <img 
+                                            src={member.profileImage} 
+                                            alt={`${member.name} ${member.nachname}`} 
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                          />
+                                        ) : (
+                                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="12" cy="7" r="4"></circle>
+                                          </svg>
+                                        )}
+                                      </div>
+                                      <div>
+                                        <div style={{ fontWeight: 'bold' }}>{member.name} {member.nachname}</div>
+                                        {member.projekt && (
+                                          <div style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
+                                            {member.projekt}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div style={{ padding: '0.75rem', color: 'var(--text-light)', textAlign: 'center' }}>
+                                    Keine Teammitglieder gefunden
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
 
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -1697,19 +2204,19 @@ export default function AdminProjects() {
                               placeholder="Titel für neuen Abschnitt"
                               value={newSectionTitle}
                               onChange={(e) => setNewSectionTitle(e.target.value)}
-                              style={{
+                            style={{
                                 flex: 2,
                                 padding: '0.6rem',
                                 borderRadius: '4px',
                                 border: '1px solid var(--border-color)',
                                 backgroundColor: 'var(--bg-lighter)',
-                                color: 'var(--text-color)'
-                              }}
+                              color: 'var(--text-color)'
+                            }}
                             />
                             <select
                               value={newSectionType}
                               onChange={(e) => setNewSectionType(e.target.value)}
-                              style={{
+                                style={{
                                 flex: 1,
                                 padding: '0.6rem',
                                 borderRadius: '4px',
@@ -1723,7 +2230,7 @@ export default function AdminProjects() {
                               <option value="image">Bild</option>
                               <option value="pdf">PDF</option>
                             </select>
-                          </div>
+                            </div>
                           
                           {/* Content fields based on section type */}
                           {newSectionType === 'text' && (
@@ -1733,84 +2240,84 @@ export default function AdminProjects() {
                                 value={newSectionContent}
                                 onChange={(e) => setNewSectionContent(e.target.value)}
                                 rows={4}
-                                style={{
-                                  width: '100%',
+                              style={{
+                                width: '100%',
                                   padding: '0.6rem',
                                   borderRadius: '4px',
                                   border: '1px solid var(--border-color)',
-                                  backgroundColor: 'var(--bg-lighter)',
+                                backgroundColor: 'var(--bg-lighter)',
                                   color: 'var(--text-color)',
                                   resize: 'vertical'
                                 }}
-                              />
-                            </div>
+                          />
+                        </div>
                           )}
                           
                           {newSectionType === '3d-model' && (
                             <div style={{ marginBottom: '1rem' }}>
                               {newSectionModel ? (
-                                <div style={{
-                                  padding: '0.75rem',
-                                  backgroundColor: 'var(--bg-lighter)',
-                                  borderRadius: '6px',
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                  marginBottom: '0.75rem'
-                                }}>
-                                  <span style={{ fontSize: '0.9rem', wordBreak: 'break-all' }}>
+                              <div style={{
+                                padding: '0.75rem',
+                                backgroundColor: 'var(--bg-lighter)',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '0.75rem'
+                              }}>
+                                <span style={{ fontSize: '0.9rem', wordBreak: 'break-all' }}>
                                     {newSectionModel.split('/').pop()}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => setNewSectionModel('')}
-                                    style={{
-                                      background: 'none',
-                                      border: 'none',
-                                      color: 'var(--text-light)',
-                                      cursor: 'pointer',
-                                      padding: '0.25rem',
-                                      fontSize: '1rem',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      flexShrink: 0
-                                    }}
-                                  >
-                                    &times;
-                                  </button>
-                                </div>
-                              ) : (
+                                </span>
                                 <button
                                   type="button"
-                                  onClick={handleSectionModelUpload}
+                                    onClick={() => setNewSectionModel('')}
                                   style={{
-                                    width: '100%',
-                                    padding: '1rem',
-                                    border: '2px dashed var(--border-color)',
-                                    borderRadius: '6px',
-                                    backgroundColor: 'var(--bg-lighter)',
+                                    background: 'none',
+                                    border: 'none',
                                     color: 'var(--text-light)',
                                     cursor: 'pointer',
-                                    textAlign: 'center',
-                                    fontSize: '0.9rem'
+                                    padding: '0.25rem',
+                                    fontSize: '1rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
                                   }}
                                 >
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem', display: 'inline-block', verticalAlign: 'middle' }}>
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="17 8 12 3 7 8"></polyline>
-                                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                                  </svg>
-                                  3D-Modell hochladen
+                                  &times;
                                 </button>
-                              )}
-                              <input
-                                type="file"
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                                  onClick={handleSectionModelUpload}
+                              style={{
+                                width: '100%',
+                                padding: '1rem',
+                                border: '2px dashed var(--border-color)',
+                                borderRadius: '6px',
+                                backgroundColor: 'var(--bg-lighter)',
+                                color: 'var(--text-light)',
+                                cursor: 'pointer',
+                                textAlign: 'center',
+                                fontSize: '0.9rem'
+                              }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem', display: 'inline-block', verticalAlign: 'middle' }}>
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                              </svg>
+                              3D-Modell hochladen
+                            </button>
+                          )}
+                          <input
+                            type="file"
                                 ref={sectionModelInputRef}
                                 onChange={handleSectionModelFileChange}
-                                accept=".glb,.gltf"
-                                style={{ display: 'none' }}
-                              />
+                            accept=".glb,.gltf"
+                            style={{ display: 'none' }}
+                          />
                               
                               <textarea
                                 placeholder="Beschreibung für das 3D-Modell (optional)"
@@ -2027,6 +2534,342 @@ export default function AdminProjects() {
                           </button>
                         </div>
                         
+                        {/* Add section edit form */}
+                        {editingSectionId && (
+                          <div style={{
+                            backgroundColor: 'var(--bg-darker)',
+                            padding: '1.5rem',
+                            borderRadius: '8px',
+                            marginTop: '1.5rem',
+                            marginBottom: '1.5rem',
+                            border: '1px solid var(--border-color)'
+                          }}>
+                            <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Abschnitt bearbeiten</h3>
+                            
+                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                              <input
+                                type="text"
+                                placeholder="Titel für Abschnitt"
+                                value={editSectionTitle}
+                                onChange={(e) => setEditSectionTitle(e.target.value)}
+                                style={{
+                                  flex: 2,
+                                  padding: '0.6rem',
+                                  borderRadius: '4px',
+                                  border: '1px solid var(--border-color)',
+                                  backgroundColor: 'var(--bg-lighter)',
+                                  color: 'var(--text-color)'
+                                }}
+                              />
+                              <select
+                                value={editSectionType}
+                                onChange={(e) => setEditSectionType(e.target.value)}
+                                style={{
+                                  flex: 1,
+                                  padding: '0.6rem',
+                                  borderRadius: '4px',
+                                  border: '1px solid var(--border-color)',
+                                  backgroundColor: 'var(--bg-lighter)',
+                                  color: 'var(--text-color)'
+                                }}
+                              >
+                                <option value="text">Text</option>
+                                <option value="3d-model">3D-Modell</option>
+                                <option value="image">Bild</option>
+                                <option value="pdf">PDF</option>
+                              </select>
+                            </div>
+                            
+                            {/* Content fields based on section type */}
+                            {(editSectionType === 'text' || editSectionType === '3d-model' || editSectionType === 'pdf' || editSectionType === 'image') && (
+                              <div style={{ marginBottom: '1rem' }}>
+                                <textarea
+                                  placeholder={
+                                    editSectionType === 'text' 
+                                      ? "Text-Inhalt für den Abschnitt" 
+                                      : editSectionType === 'image'
+                                        ? "Beschreibung für das Bild (optional)"
+                                        : editSectionType === '3d-model'
+                                          ? "Beschreibung für das 3D-Modell (optional)"
+                                          : "Beschreibung für das PDF (optional)"
+                                  }
+                                  value={editSectionContent}
+                                  onChange={(e) => setEditSectionContent(e.target.value)}
+                                  rows={4}
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.6rem',
+                                    borderRadius: '4px',
+                                    border: '1px solid var(--border-color)',
+                                    backgroundColor: 'var(--bg-lighter)',
+                                    color: 'var(--text-color)',
+                                    resize: 'vertical'
+                                  }}
+                                />
+                              </div>
+                            )}
+                            
+                            {editSectionType === 'image' && (
+                              <div style={{ marginBottom: '1rem' }}>
+                                {editSectionImage ? (
+                                  <div style={{
+                                    position: 'relative',
+                                    marginBottom: '0.75rem'
+                                  }}>
+                                    <img 
+                                      src={editSectionImage}
+                                      alt="Vorschau"
+                                      style={{
+                                        width: '100%',
+                                        height: 'auto',
+                                        borderRadius: '6px',
+                                        border: '1px solid var(--border-color)'
+                                      }}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditSectionImage('')}
+                                      style={{
+                                        position: 'absolute',
+                                        top: '10px',
+                                        right: '10px',
+                                        backgroundColor: 'rgba(0,0,0,0.6)',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '50%',
+                                        width: '30px',
+                                        height: '30px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                      </svg>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={handleEditSectionImageUpload}
+                                    style={{
+                                      width: '100%',
+                                      padding: '1rem',
+                                      border: '2px dashed var(--border-color)',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'var(--bg-lighter)',
+                                      color: 'var(--text-light)',
+                                      cursor: 'pointer',
+                                      textAlign: 'center',
+                                      fontSize: '0.9rem'
+                                    }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem', display: 'inline-block', verticalAlign: 'middle' }}>
+                                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                      <polyline points="21 15 16 10 5 21"></polyline>
+                                    </svg>
+                                    Bild hochladen
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                            
+                            {editSectionType === '3d-model' && (
+                              <div style={{ marginBottom: '1rem' }}>
+                                {editSectionModel ? (
+                                  <div style={{
+                                    position: 'relative',
+                                    marginBottom: '0.75rem',
+                                    padding: '1rem',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '6px',
+                                    backgroundColor: 'var(--bg-lighter)'
+                                  }}>
+                                    <div style={{ wordBreak: 'break-all', fontSize: '0.9rem' }}>
+                                      {editSectionModel}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditSectionModel('')}
+                                      style={{
+                                        position: 'absolute',
+                                        top: '10px',
+                                        right: '10px',
+                                        backgroundColor: 'var(--bg-darker)',
+                                        color: 'var(--text-light)',
+                                        border: 'none',
+                                        borderRadius: '50%',
+                                        width: '24px',
+                                        height: '24px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        fontSize: '0.8rem'
+                                      }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                      </svg>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={handleEditSectionModelUpload}
+                                    style={{
+                                      width: '100%',
+                                      padding: '1rem',
+                                      border: '2px dashed var(--border-color)',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'var(--bg-lighter)',
+                                      color: 'var(--text-light)',
+                                      cursor: 'pointer',
+                                      textAlign: 'center',
+                                      fontSize: '0.9rem'
+                                    }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem', display: 'inline-block', verticalAlign: 'middle' }}>
+                                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                      <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                      <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                    </svg>
+                                    3D-Modell hochladen
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                            
+                            {editSectionType === 'pdf' && (
+                              <div style={{ marginBottom: '1rem' }}>
+                                {editSectionPdf ? (
+                                  <div style={{
+                                    position: 'relative',
+                                    marginBottom: '0.75rem',
+                                    padding: '1rem',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '6px',
+                                    backgroundColor: 'var(--bg-lighter)'
+                                  }}>
+                                    <div style={{ wordBreak: 'break-all', fontSize: '0.9rem' }}>
+                                      {editSectionPdf}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditSectionPdf('')}
+                                      style={{
+                                        position: 'absolute',
+                                        top: '10px',
+                                        right: '10px',
+                                        backgroundColor: 'var(--bg-darker)',
+                                        color: 'var(--text-light)',
+                                        border: 'none',
+                                        borderRadius: '50%',
+                                        width: '24px',
+                                        height: '24px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        fontSize: '0.8rem'
+                                      }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                      </svg>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={handleEditSectionPdfUpload}
+                                    style={{
+                                      width: '100%',
+                                      padding: '1rem',
+                                      border: '2px dashed var(--border-color)',
+                                      borderRadius: '6px',
+                                      backgroundColor: 'var(--bg-lighter)',
+                                      color: 'var(--text-light)',
+                                      cursor: 'pointer',
+                                      textAlign: 'center',
+                                      fontSize: '0.9rem'
+                                    }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem', display: 'inline-block', verticalAlign: 'middle' }}>
+                                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                      <polyline points="14 2 14 8 20 8"></polyline>
+                                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                                      <polyline points="10 9 9 9 8 9"></polyline>
+                                    </svg>
+                                    PDF hochladen
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                            
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+                              <button
+                                type="button"
+                                onClick={handleCancelEdit}
+                                style={{
+                                  padding: '0.6rem 1rem',
+                                  backgroundColor: 'var(--bg-lighter)',
+                                  color: 'var(--text-color)',
+                                  border: '1px solid var(--border-color)',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Abbrechen
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleSaveEditedSection}
+                                style={{
+                                  padding: '0.6rem 1rem',
+                                  backgroundColor: 'var(--accent-blue)',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Speichern
+                              </button>
+                            </div>
+                            
+                            {/* Hidden file inputs for edit section */}
+                            <input
+                              type="file"
+                              ref={editSectionFileInputRef}
+                              onChange={handleEditSectionFileChange}
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                            />
+                            <input
+                              type="file"
+                              ref={editSectionModelInputRef}
+                              onChange={handleEditSectionModelFileChange}
+                              accept=".glb,.gltf"
+                              style={{ display: 'none' }}
+                            />
+                            <input
+                              type="file"
+                              ref={editSectionPdfInputRef}
+                              onChange={handleEditSectionPdfFileChange}
+                              accept=".pdf"
+                              style={{ display: 'none' }}
+                            />
+                          </div>
+                        )}
+                        
                         <div style={{
                           maxHeight: layoutSections.length >= 6 ? '300px' : 'none',
                           overflowY: layoutSections.length >= 6 ? 'auto' : 'visible',
@@ -2074,6 +2917,35 @@ export default function AdminProjects() {
                               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                 <button
                                   type="button"
+                                  onClick={() => handleEditSection(section)}
+                                  disabled={isDefaultComponent(section.id)}
+                                  style={{
+                                    padding: '0.3rem',
+                                    backgroundColor: isDefaultComponent(section.id) 
+                                      ? 'rgba(var(--text-light-rgb), 0.1)' 
+                                      : 'rgba(var(--accent-blue-rgb), 0.1)',
+                                    color: isDefaultComponent(section.id) 
+                                      ? 'var(--text-light)' 
+                                      : 'var(--accent-blue)',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '4px',
+                                    cursor: isDefaultComponent(section.id) ? 'not-allowed' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    opacity: isDefaultComponent(section.id) ? 0.5 : 1
+                                  }}
+                                  title={isDefaultComponent(section.id) 
+                                    ? "Standard-Komponente kann nicht bearbeitet werden" 
+                                    : "Abschnitt bearbeiten"}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                  </svg>
+                                </button>
+                                <button
+                                  type="button"
                                   onClick={() => handleDeleteSection(index)}
                                   style={{
                                     padding: '0.3rem',
@@ -2115,6 +2987,9 @@ export default function AdminProjects() {
                               </div>
                             </div>
                           ))}
+                          
+                          {/* Section editing form has been moved above the sections list */}
+                          
                         </div>
                       </div>
                     </div>
@@ -2193,6 +3068,26 @@ export default function AdminProjects() {
                     </div>
                   </div>
 
+                  {/* Helper hint for editing sections by clicking */}
+                  <div style={{
+                    backgroundColor: 'rgba(var(--accent-blue-rgb), 0.05)',
+                    border: '1px solid rgba(var(--accent-blue-rgb), 0.1)',
+                    borderRadius: '6px',
+                    padding: '0.75rem 1rem',
+                    marginBottom: '1.5rem',
+                    fontSize: '0.9rem',
+                    color: 'var(--accent-blue)',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem' }}>
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="16" x2="12" y2="12"></line>
+                      <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    Klicken Sie auf einen Abschnitt, um ihn zu bearbeiten. Die Änderungen werden in der Vorschau sofort angezeigt.
+                  </div>
+
                   {/* Header Section - Always shown first */}
                   <div style={{ 
                     borderRadius: '8px', 
@@ -2251,13 +3146,27 @@ export default function AdminProjects() {
                       switch (section.type) {
                         case 'text':
                           return (
-                            <div key={section.id} style={{
+                            <div 
+                              key={section.id} 
+                              style={{
                               backgroundColor: 'var(--card-bg)',
                               padding: '1.5rem',
                               borderRadius: '8px',
                               marginBottom: '2rem',
-                              border: '1px solid var(--border-color)'
-                            }}>
+                                border: '1px solid var(--border-color)',
+                                cursor: 'pointer',
+                                transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+                              }}
+                              onClick={() => handleEditSection(section)}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--accent-blue)';
+                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(var(--accent-blue-rgb), 0.1)';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--border-color)';
+                                e.currentTarget.style.boxShadow = 'none';
+                              }}
+                            >
                               <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>{section.title}</h2>
                               <div style={{ 
                                 whiteSpace: 'pre-wrap',
@@ -2271,13 +3180,27 @@ export default function AdminProjects() {
                         
                         case '3d-model':
                           return (
-                            <div key={section.id} style={{
+                            <div 
+                              key={section.id} 
+                              style={{
                               backgroundColor: 'var(--card-bg)',
                               padding: '1.5rem',
                               borderRadius: '8px',
                               marginBottom: '2rem',
-                              border: '1px solid var(--border-color)'
-                            }}>
+                                border: '1px solid var(--border-color)',
+                                cursor: 'pointer',
+                                transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+                              }}
+                              onClick={() => handleEditSection(section)}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--accent-blue)';
+                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(var(--accent-blue-rgb), 0.1)';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--border-color)';
+                                e.currentTarget.style.boxShadow = 'none';
+                              }}
+                            >
                               <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>{section.title}</h2>
                               <div style={{ 
                                 height: '400px', 
@@ -2292,24 +3215,13 @@ export default function AdminProjects() {
                                 {formData.modelPath ? (
                                   <div style={{ 
                                     width: '100%', 
-                                    height: '100%', 
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                    flexDirection: 'column'
+                                    height: '100%'
                                   }}>
-                                    <img 
-                                      src="/images/3d-model-placeholder.png" 
-                                      alt="3D Model Preview"
-                                      style={{
-                                        maxWidth: '80%',
-                                        maxHeight: '70%',
-                                        opacity: 0.6
-                                      }}
+                                    <ModelViewer 
+                                      modelPath={formData.modelPath}
+                                      poster="/images/3d-model-placeholder.png"
+                                      alt="3D Model"
                                     />
-                                    <div style={{ marginTop: '1rem' }}>
-                                      <span>Klicken und ziehen zum Drehen • Scrollen zum Zoomen</span>
-                                    </div>
                                   </div>
                                 ) : (
                                   'Kein 3D-Modell ausgewählt'
@@ -2330,13 +3242,27 @@ export default function AdminProjects() {
                         
                         case 'tags':
                           return (
-                            <div key={section.id} style={{
+                            <div 
+                              key={section.id} 
+                              style={{
                               backgroundColor: 'var(--card-bg)',
                               padding: '1.5rem',
                               borderRadius: '8px',
                               marginBottom: '2rem',
-                              border: '1px solid var(--border-color)'
-                            }}>
+                                border: '1px solid var(--border-color)',
+                                cursor: 'pointer',
+                                transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+                              }}
+                              onClick={() => handleEditSection(section)}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--accent-blue)';
+                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(var(--accent-blue-rgb), 0.1)';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--border-color)';
+                                e.currentTarget.style.boxShadow = 'none';
+                              }}
+                            >
                               <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>{section.title}</h2>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                                 {formData.technologies.length > 0 ? (
@@ -2365,13 +3291,27 @@ export default function AdminProjects() {
                           
                         case 'details':
                           return (
-                            <div key={section.id} style={{
+                            <div 
+                              key={section.id} 
+                              style={{
                               backgroundColor: 'var(--card-bg)',
                               padding: '1.5rem',
                               borderRadius: '8px',
                               marginBottom: '2rem',
-                              border: '1px solid var(--border-color)'
-                            }}>
+                                border: '1px solid var(--border-color)',
+                                cursor: 'pointer',
+                                transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+                              }}
+                              onClick={() => handleEditSection(section)}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--accent-blue)';
+                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(var(--accent-blue-rgb), 0.1)';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--border-color)';
+                                e.currentTarget.style.boxShadow = 'none';
+                              }}
+                            >
                               <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>{section.title}</h2>
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div>
@@ -2400,13 +3340,27 @@ export default function AdminProjects() {
                           
                         case 'image':
                           return (
-                            <div key={section.id} style={{
+                            <div 
+                              key={section.id} 
+                              style={{
                               backgroundColor: 'var(--card-bg)',
                               padding: '1.5rem',
                               borderRadius: '8px',
                               marginBottom: '2rem',
-                              border: '1px solid var(--border-color)'
-                            }}>
+                                border: '1px solid var(--border-color)',
+                                cursor: 'pointer',
+                                transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+                              }}
+                              onClick={() => handleEditSection(section)}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--accent-blue)';
+                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(var(--accent-blue-rgb), 0.1)';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--border-color)';
+                                e.currentTarget.style.boxShadow = 'none';
+                              }}
+                            >
                               <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>{section.title}</h2>
                               <div style={{ 
                                 borderRadius: '8px',
@@ -2438,18 +3392,42 @@ export default function AdminProjects() {
                                   </div>
                                 )}
                               </div>
+                              {section.description && (
+                                <div style={{ 
+                                  marginTop: '1rem',
+                                  fontSize: '0.95rem',
+                                  color: 'var(--text-color)',
+                                  lineHeight: '1.6'
+                                }}>
+                                  {section.description}
+                                </div>
+                              )}
                             </div>
                           );
                           
                         case 'pdf':
                           return (
-                            <div key={section.id} style={{
-                              backgroundColor: 'var(--card-bg)',
-                              padding: '1.5rem',
-                              borderRadius: '8px',
-                              marginBottom: '2rem',
-                              border: '1px solid var(--border-color)'
-                            }}>
+                            <div 
+                              key={section.id} 
+                              style={{
+                                backgroundColor: 'var(--card-bg)',
+                                padding: '1.5rem',
+                                borderRadius: '8px',
+                                marginBottom: '2rem',
+                                border: '1px solid var(--border-color)',
+                                cursor: 'pointer',
+                                transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+                              }}
+                              onClick={() => handleEditSection(section)}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--accent-blue)';
+                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(var(--accent-blue-rgb), 0.1)';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--border-color)';
+                                e.currentTarget.style.boxShadow = 'none';
+                              }}
+                            >
                               <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>{section.title}</h2>
                               <div style={{ 
                                 borderRadius: '8px',
