@@ -1,0 +1,44 @@
+[
+  {
+    "id": 1743326294158,
+    "type": "project",
+    "action": "edit",
+    "text": "Projekt 'Test für Letzte Aktivitäten' bearbeitet",
+    "timestamp": "2025-03-30T09:18:14.158Z"
+  },
+  {
+    "id": 1743326261534,
+    "type": "project",
+    "action": "edit",
+    "text": "Projekt '3D Stuhl-Modellierung' bearbeitet",
+    "timestamp": "2025-03-30T09:17:41.534Z"
+  },
+  {
+    "id": 1743326075459,
+    "type": "project",
+    "action": "add",
+    "text": "Neues Projekt 'Test für Letzte Aktivitäten' erstellt",
+    "timestamp": "2025-03-30T09:14:35.459Z"
+  },
+  {
+    "id": 1,
+    "type": "project",
+    "action": "update",
+    "text": "3D Stuhl-Modellierung Projekt aktualisiert",
+    "timestamp": "2023-10-15T13:45:00.000Z"
+  },
+  {
+    "id": 2,
+    "type": "project",
+    "action": "upload",
+    "text": "Neues Modell hochgeladen: chair.glb",
+    "timestamp": "2023-10-14T08:23:00.000Z"
+  },
+  {
+    "id": 3,
+    "type": "project",
+    "action": "edit",
+    "text": "Projekt 'Projekt Zwei' bearbeitet",
+    "timestamp": "2023-03-19T10:30:00.000Z"
+  }
+]
