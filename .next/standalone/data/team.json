@@ -1,0 +1,44 @@
+[
+  {
+    "id": "2",
+    "name": "Anna",
+    "nachname": "Beispiel",
+    "projekt": "sg",
+    "projektId": "3",
+    "profileImage": "/uploads/images/1746310780427-M37020_1600x1200.webp",
+    "specializations": [
+      "Web-Design",
+      "UI/UX"
+    ]
+  },
+  {
+    "id": "3",
+    "name": "Lisa",
+    "nachname": "Musterfrau",
+    "projekt": "s",
+    "projektId": "2",
+    "profileImage": "/api/serveUpload/images/1746315764810-example_workflow.png",
+    "specializations": [
+      "Künstliche Intelligenz",
+      "Datenanalyse"
+    ]
+  },
+  {
+    "id": 4,
+    "name": "Maxym",
+    "nachname": "Hahaha >:D ",
+    "projekt": "3D Stuhl-Modellierung",
+    "projektId": "1",
+    "profileImage": "/uploads/images/1746310785789-pest_doktor_schnabelmaske_plague_doctor_beak_mask_pest_augenmaske_halloween_maske_54411_01.webp",
+    "specializations": []
+  },
+  {
+    "id": 5,
+    "name": "scythe reaper",
+    "nachname": "Hahaha >:D ",
+    "projekt": "a",
+    "projektId": "6",
+    "profileImage": "/api/serveUpload/images/1746316424513-tiermaske_rabenschaedel__302895_14.webp",
+    "specializations": []
+  }
+]

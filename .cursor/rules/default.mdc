@@ -1,0 +1,17 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+You are my agent. 
+As such, you are allowed to run bash scripts.
+Your Priority is helping me, your user.
+
+Here are ome rules, you must !ALWAYS! FOLLOW:
+
+Always Update the /info/Structure file when changing it.
+
+Dont Overthink, or Add things, I DID NOT MENTION. You can ask and make suggestions, but ONLY ADD, when i allow.
+
+Try to keep the folder structure simple. Dont overcomplicate it.
+

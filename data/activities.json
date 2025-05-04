@@ -1,0 +1,135 @@
+[
+  {
+    "id": 1746318112317,
+    "type": "team",
+    "action": "delete",
+    "text": "Teammitglied 'scythe reaper Hahaha >:D ' entfernt",
+    "timestamp": "2025-05-04T00:21:52.317Z"
+  },
+  {
+    "id": 1746318110621,
+    "type": "team",
+    "action": "delete",
+    "text": "Teammitglied 'Maxym Hahaha >:D ' entfernt",
+    "timestamp": "2025-05-04T00:21:50.621Z"
+  },
+  {
+    "id": 1746318109004,
+    "type": "team",
+    "action": "delete",
+    "text": "Teammitglied 'Lisa Musterfrau' entfernt",
+    "timestamp": "2025-05-04T00:21:49.004Z"
+  },
+  {
+    "id": 1746318107082,
+    "type": "team",
+    "action": "delete",
+    "text": "Teammitglied 'Anna Beispiel' entfernt",
+    "timestamp": "2025-05-04T00:21:47.082Z"
+  },
+  {
+    "id": 1746318101125,
+    "type": "project",
+    "action": "delete",
+    "text": "Projekt 'Test' gelöscht",
+    "timestamp": "2025-05-04T00:21:41.125Z"
+  },
+  {
+    "id": 1746318097672,
+    "type": "project",
+    "action": "delete",
+    "text": "Projekt 'haha' gelöscht",
+    "timestamp": "2025-05-04T00:21:37.672Z"
+  },
+  {
+    "id": 1746318079446,
+    "type": "project",
+    "action": "delete",
+    "text": "Projekt 'Interaktive Webseite' gelöscht",
+    "timestamp": "2025-05-04T00:21:19.446Z"
+  },
+  {
+    "id": 1746318070758,
+    "type": "project",
+    "action": "delete",
+    "text": "Projekt '3D Stuhl-Modellierung' gelöscht",
+    "timestamp": "2025-05-04T00:21:10.758Z"
+  },
+  {
+    "id": 1746317799128,
+    "type": "project",
+    "action": "add",
+    "text": "Neues Projekt 'Test' erstellt",
+    "timestamp": "2025-05-04T00:16:39.128Z"
+  },
+  {
+    "id": 1746317713525,
+    "type": "project",
+    "action": "add",
+    "text": "Neues Projekt 'haha' erstellt",
+    "timestamp": "2025-05-04T00:15:13.525Z"
+  },
+  {
+    "id": 1746317632624,
+    "type": "project",
+    "action": "edit",
+    "text": "Projekt '3D Stuhl-Modellierung' bearbeitet",
+    "timestamp": "2025-05-04T00:13:52.624Z"
+  },
+  {
+    "id": 1746316430905,
+    "type": "team",
+    "action": "add",
+    "text": "Neues Teammitglied 'scythe reaper Hahaha >:D ' hinzugefügt",
+    "timestamp": "2025-05-03T23:53:50.905Z"
+  },
+  {
+    "id": 1746315767400,
+    "type": "team",
+    "action": "edit",
+    "text": "Teammitglied 'Lisa Musterfrau' bearbeitet",
+    "timestamp": "2025-05-03T23:42:47.400Z"
+  },
+  {
+    "id": 1746310803821,
+    "type": "team",
+    "action": "edit",
+    "text": "Teammitglied 'Anna Beispiel' bearbeitet",
+    "timestamp": "2025-05-03T22:20:03.821Z"
+  },
+  {
+    "id": 1746310790909,
+    "type": "team",
+    "action": "add",
+    "text": "Neues Teammitglied 'Maxym Hahaha >:D ' hinzugefügt",
+    "timestamp": "2025-05-03T22:19:50.909Z"
+  },
+  {
+    "id": 1746310570168,
+    "type": "team",
+    "action": "delete",
+    "text": "Teammitglied 'Max Mustermann' entfernt",
+    "timestamp": "2025-05-03T22:16:10.168Z"
+  },
+  {
+    "id": 1,
+    "type": "project",
+    "action": "update",
+    "text": "3D Stuhl-Modellierung Projekt aktualisiert",
+    "timestamp": "2023-10-15T13:45:00.000Z"
+  },
+  {
+    "id": 2,
+    "type": "project",
+    "action": "upload",
+    "text": "Neues Modell hochgeladen: chair.glb",
+    "timestamp": "2023-10-14T08:23:00.000Z"
+  },
+  {
+    "id": 3,
+    "type": "project",
+    "action": "edit",
+    "text": "Projekt 'Projekt Zwei' bearbeitet",
+    "timestamp": "2023-03-19T10:30:00.000Z"
+  }
+]

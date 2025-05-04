@@ -1,0 +1,164 @@
+[
+  {
+    "id": 1,
+    "title": "3D Stuhl-Modellierung",
+    "description": "Ein mathematischer Stuhl, modelliert in Blender.",
+    "longDescription": "Dieses Projekt zeigt die Modellierung eines mathematischen Stuhls in Blender mit Fokus auf geometrische Präzision und ästhetisches Design. Der Stuhl wurde mit Subdivision Surface-Techniken erstellt, um eine glatte und realistische Darstellung zu erreichen.",
+    "category": "3D-Design",
+    "technologies": [
+      "Blender",
+      "3D-Modellierung",
+      "Subdivision Surface"
+    ],
+    "image": "/project1.jpg",
+    "modelPath": "/models/chair.glb",
+    "completed": true,
+    "team": [
+      "Jano Offermann"
+    ],
+    "timeline": "Januar 2023 - März 2023",
+    "github": "https://github.com/example/blender-chair-model",
+    "layoutSections": [
+      {
+        "id": "header",
+        "type": "header",
+        "title": "Header",
+        "active": true
+      },
+      {
+        "id": "description",
+        "type": "text",
+        "title": "Beschreibung",
+        "active": true
+      },
+      {
+        "id": "technologies",
+        "type": "tags",
+        "title": "Technologien",
+        "active": true
+      },
+      {
+        "id": "model",
+        "type": "3d-model",
+        "title": "3D-Modell",
+        "active": true
+      },
+      {
+        "id": "details",
+        "type": "details",
+        "title": "Details",
+        "active": true
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "title": "Interaktive Webseite",
+    "description": "Eine responsive Webseite mit modernen Web-Technologien.",
+    "longDescription": "Dieses Projekt demonstriert die Entwicklung einer modernen, responsiven Webseite unter Verwendung von HTML5, CSS3 und JavaScript. Die Seite enthält interaktive Elemente, Animationen und folgt den neuesten Best Practices für Web-Design und Benutzerfreundlichkeit.",
+    "image": "/project2.jpg",
+    "technologies": [
+      "HTML5",
+      "CSS3",
+      "JavaScript",
+      "Responsive Design"
+    ],
+    "category": "Web-Entwicklung",
+    "completed": true,
+    "modelPath": "",
+    "team": [
+      "Jano Offermann",
+      "Lisa Schmidt"
+    ],
+    "timeline": "April 2023 - Juni 2023",
+    "github": "https://github.com/example/interactive-website"
+  },
+  {
+    "id": 3,
+    "title": "haha",
+    "description": "a",
+    "longDescription": "",
+    "category": "Test",
+    "technologies": [],
+    "image": "/api/serveUpload/images/1746317695912-example_workflow.png",
+    "modelPath": "",
+    "completed": false,
+    "team": [],
+    "timeline": "",
+    "github": "",
+    "layoutSections": [
+      {
+        "id": "header",
+        "type": "header",
+        "title": "Header",
+        "active": true
+      },
+      {
+        "id": "description",
+        "type": "text",
+        "title": "Beschreibung",
+        "active": true
+      },
+      {
+        "id": "technologies",
+        "type": "tags",
+        "title": "Technologien",
+        "active": true
+      },
+      {
+        "id": "details",
+        "type": "details",
+        "title": "Details",
+        "active": true
+      },
+      {
+        "id": "section-1746317710471",
+        "title": "pic",
+        "type": "image",
+        "content": "/api/serveUpload/images/1746317693362-ComfyUI_00140_.png",
+        "description": "",
+        "active": true
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "title": "Test",
+    "description": "A",
+    "longDescription": "",
+    "category": "Test",
+    "technologies": [],
+    "image": "/api/serveUpload/images/1746317782391-1000036896.jpg",
+    "modelPath": "",
+    "completed": false,
+    "team": [],
+    "timeline": "",
+    "github": "",
+    "layoutSections": [
+      {
+        "id": "header",
+        "type": "header",
+        "title": "Header",
+        "active": true
+      },
+      {
+        "id": "description",
+        "type": "text",
+        "title": "Beschreibung",
+        "active": true
+      },
+      {
+        "id": "technologies",
+        "type": "tags",
+        "title": "Technologien",
+        "active": true
+      },
+      {
+        "id": "details",
+        "type": "details",
+        "title": "Details",
+        "active": true
+      }
+    ]
+  }
+]
